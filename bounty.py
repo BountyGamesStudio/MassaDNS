@@ -13,10 +13,9 @@ PHONE_NUMBER = "+79518368998"
 BANK_NAME = "Т-Банк"
 
 PRICES = {
-    "3_days": 50,
-    "7_days": 120,
-    "21_days": 200,
-    "31_days": 300,
+    "1_day": 20,
+    "7_days": 50,
+    "30_days": 100,
 }
 
 # ===== БД =====
@@ -73,7 +72,6 @@ def set_subscription(tg_id, days):
 def add_payment(tg_id, days, amount):
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
-    # Закрываем старые ожидающие платежи
     cur.execute("UPDATE payments SET status = 'cancelled' WHERE tg_id = ? AND status = 'waiting'", (tg_id,))
     cur.execute(
         "INSERT INTO payments (tg_id, days, amount, status, created_at) VALUES (?, ?, ?, 'waiting', ?)",
@@ -130,10 +128,9 @@ def main_menu():
 
 def buy_menu():
     return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="3 дня (50₽)", callback_data="buy_3")],
-        [InlineKeyboardButton(text="7 дней (120₽)", callback_data="buy_7")],
-        [InlineKeyboardButton(text="21 день (200₽)", callback_data="buy_21")],
-        [InlineKeyboardButton(text="31 день (300₽)", callback_data="buy_31")],
+        [InlineKeyboardButton(text="1 день (20₽)", callback_data="buy_1")],
+        [InlineKeyboardButton(text="7 дней (50₽)", callback_data="buy_7")],
+        [InlineKeyboardButton(text="30 дней (100₽)", callback_data="buy_30")],
         [InlineKeyboardButton(text="🔙 Назад", callback_data="back")]
     ])
 
@@ -243,7 +240,6 @@ async def process_buy(callback: CallbackQuery):
 async def paid_click(callback: CallbackQuery):
     payment_id = int(callback.data.split("_")[1])
     
-    # Проверяем, существует ли ещё этот платеж
     payment = get_payment(payment_id)
     if not payment:
         await callback.message.edit_text(
@@ -294,7 +290,6 @@ async def handle_screenshot(message: types.Message):
         f"🕐 Время: {datetime.datetime.now().strftime('%d.%m.%Y %H:%M')}"
     )
 
-    # Отправляем ВСЕМ админам
     for admin_id in ADMIN_IDS:
         try:
             if message.photo:
@@ -348,7 +343,6 @@ async def admin_confirm(callback: CallbackQuery):
     update_payment_status(payment_id, "confirmed", callback.from_user.id)
     set_subscription(tg_id, days)
 
-    # Уведомление пользователю
     try:
         await bot.send_message(
             tg_id,
@@ -360,7 +354,6 @@ async def admin_confirm(callback: CallbackQuery):
     except:
         pass
 
-    # Уведомление всем админам
     admin_name = callback.from_user.username or f"ID {callback.from_user.id}"
     for admin_id in ADMIN_IDS:
         try:
@@ -410,7 +403,6 @@ async def admin_reject(callback: CallbackQuery):
 
     update_payment_status(payment_id, "rejected", callback.from_user.id)
 
-    # Уведомление пользователю
     try:
         await bot.send_message(
             tg_id,
@@ -424,7 +416,6 @@ async def admin_reject(callback: CallbackQuery):
     except:
         pass
 
-    # Уведомление всем админам
     admin_name = callback.from_user.username or f"ID {callback.from_user.id}"
     for admin_id in ADMIN_IDS:
         try:
